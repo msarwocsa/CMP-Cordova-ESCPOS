@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin 
+  id="com.citizen.service.plugin" 
+  version="1.0.0" 
+  xmlns="http://apache.org/cordova/ns/plugins/1.0" 
+  xmlns:android="http://schemas.android.com/apk/res/android">
+  
+  <name>CitizenPluginService</name>
+  <description>Citizen Cordova Compliant Plugin</description>
+  <author>Citizen</author>
+  <keywords>Citizen</keywords>
+  <license>Apache 2.0 License</license>
+  
+  <js-module name="CitizenPluginService" src="www/CitizenPluginService.js">
+    <clobbers target="citizen_plugin" />
+  </js-module>
+  
+  <platform name="windows">
+    <js-module name="citizen_proxy" src="src/windows/CitizenEscpPrinter_Proxy.js">
+      <runs target="" />
+    </js-module>
+
+    <config-file target="package.appxmanifest" parent="/Package/Capabilities" versions=">=10.0.0">
+      <DeviceCapability Name="bluetooth.rfcomm">
+        <Device Id="any">
+          <Function Type="name:serialPort"/>
+        </Device>
+      </DeviceCapability>
+    </config-file>
+    <resource-file src="src/windows/Citizen.Net.dll" target="Citizen.Net.dll" reference="true"/>
+    <framework src="src/windows/CitizenPlugin.winmd" custom="true"/>
+  </platform>
+  
+  <platform name="android">
+    <config-file parent="/*" target="res/xml/config.xml">
+      <feature name="CitizenEscpPrinter">
+        <param name="android-package" value="com.citizen.service.plugin.CitizenEscpPrinter" />
+      </feature>
+    </config-file>
+
+    <config-file parent="/*" target="AndroidManifest.xml">
+      <uses-permission android:name="android.permission.INTERNET" />
+      <uses-permission android:name="android.permission.BLUETOOTH" />
+      <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    </config-file>/>
+    
+    <source-file src="src/android/CitizenEscpPrinter.java" target-dir="src/com/citizen/service/plugin" />
+    <lib-file arch="device" src="src/android/libs/Citizen_Android_1091.jar" />
+  </platform>
+  
+  <platform name="ios">
+    <config-file parent="/*" target="config.xml">
+      <feature name="CitizenEscpPrinter">
+        <param name="ios-package" value="CitizenEscpPrinter" />
+        <param name="onload" value="true" />
+      </feature>
+    </config-file>
+
+    <header-file src="src/ios/CitizenEscpPrinter.h"/>
+    <source-file src="src/ios/CitizenEscpPrinter.m" />
+
+    <header-file src="src/ios/libs/Headers/CallbackData.h"/>
+    <header-file src="src/ios/libs/Headers/CPCLPrinter.h"/>
+    <header-file src="src/ios/libs/Headers/EABluetoothPort.h"/>
+    <header-file src="src/ios/libs/Headers/ESCPOSPrinter.h"/>
+    <header-file src="src/ios/libs/Headers/POSPrinterFinder.h"/>
+    <header-file src="src/ios/libs/Headers/ZPLPrinter.h"/>
+
+    <source-file src="src/ios/libs/libPrinter_175b.a" framework="true" />
+    <framework src="ExternalAccessory.framework" framework="true" />
+
+    <config-file target="*-Info.plist" parent="UISupportedExternalAccessoryProtocols">
+      <array>
+        <string>com.mobileprinter.datapath</string>
+      </array>
+    </config-file>
+  </platform>
+</plugin>
