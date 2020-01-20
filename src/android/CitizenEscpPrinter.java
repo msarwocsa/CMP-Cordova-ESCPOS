@@ -43,6 +43,7 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 
     private static final int REQUEST_ENABLE_BT = 2;
     private static final int BT_PRINTER_LIST = 20;
+    private static final int BT_PRINTER = 1536;
 	private BroadcastReceiver discoveryResult = null;
 	private Context context;
 	String btAddressData[] = new String[BT_PRINTER_LIST];
@@ -75,6 +76,8 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 	static final String SEARCH_BT_PRINTER = "searchBT";
 	static final String GET_COUNT_BT = "getCountBT";
 	static final String GET_SEARCHED_LIST = "getListBTAddress";
+
+	static boolean bt_init_flag = false;
 
 	@Override
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException
@@ -216,7 +219,7 @@ public class CitizenEscpPrinter extends CordovaPlugin {
    			{
    				for(ni=0; ni<btCounter; ni++)
    				{
-   					bluetoothinfo.put("Address" + (ni+1), btAddressData[ni]);
+					bluetoothinfo.put(""+ni, btAddressData[ni]);
 					deviceArray.put(bluetoothinfo);
    				}
    				callbackContext.success(bluetoothinfo);
@@ -779,7 +782,7 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 //                Log.e("CitizenEscpPrinter", "Error unregistering bluetooth receiver: " + e.getMessage(), e); 
             } 
         } 
-    } 
+    }
 
 	public void discover(JSONArray arguments, CallbackContext cid)
 	{
@@ -803,7 +806,10 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 			{
 				try {
 					Thread.sleep(1000);
-					if( mBluetoothAdapter.isEnabled() ) break;
+					if( mBluetoothAdapter.isEnabled() )
+					{
+						break;
+					}
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -811,12 +817,12 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 			}
 		}
 
-		// We need to listen to power events to update bluetooth status 
+		// We need to listen to power events to update bluetooth status
 		IntentFilter intentFilter = new IntentFilter(); 
-		intentFilter.addAction(BluetoothDevice.ACTION_FOUND); 
+		intentFilter.addAction(BluetoothDevice.ACTION_FOUND);
+		intentFilter.addAction(BluetoothDevice.ACTION_CLASS_CHANGED);
 		if (this.discoveryResult == null)
 		{
-//			Log.e("CitizenEscpPrinter", "discoveryResult is null");
 			this.discoveryResult = new BroadcastReceiver()
 			{ 
 				@Override 
@@ -827,19 +833,37 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 					BluetoothDevice remoteDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 					if(remoteDevice != null)
 					{
-						if(remoteDevice.getBondState() != BluetoothDevice.BOND_BONDED)
-						{
-							key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"]";
-						}
-						else
-						{
-							key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"] [Paired]";
-						}
+						int deviceNum = remoteDevice.getBluetoothClass().getMajorDeviceClass();
 
-						btAddressData[btCounter] = remoteDevice.getAddress();
-   						btCounter++;
+						if(deviceNum == BT_PRINTER)
+						{
+							if(remoteDevice.getBondState() != BluetoothDevice.BOND_BONDED)
+							{
+								key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"]";
+							}
+							else
+							{
+								key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"] [Paired]";
+							}
+
+							boolean bCheck = true;
+							for(int i = 0; i < btCounter; i++)
+							{
+								if(btAddressData[i].equals(remoteDevice.getAddress()))
+								{
+									bCheck = false;
+									break;
+								}
+							}
+
+							if(bCheck) {
+								btAddressData[btCounter] = remoteDevice.getAddress();
+								btCounter++;
+							}
+
 //		 				Log.e("onReceive", key);
 //    					Log.e("onReceive", "Status=" + mBluetoothAdapter.getState());
+						}
 					}
 				} 
 			};
@@ -857,19 +881,38 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 					BluetoothDevice remoteDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 					if(remoteDevice != null)
 					{
-						if(remoteDevice.getBondState() != BluetoothDevice.BOND_BONDED)
+						int deviceNum = remoteDevice.getBluetoothClass().getMajorDeviceClass();
+
+						if(deviceNum == BT_PRINTER)
 						{
-							key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"]";
-						}
-						else
-						{
-							key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"] [Paired]";
-						}
-   						btAddressData[btCounter] = remoteDevice.getAddress();
-   						btCounter++;
+							if(remoteDevice.getBondState() != BluetoothDevice.BOND_BONDED)
+							{
+								key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"]";
+							}
+							else
+							{
+								key = remoteDevice.getName() +"\n["+remoteDevice.getAddress()+"] [Paired]";
+							}
+
+							boolean bCheck = true;
+							for(int i = 0; i < btCounter; i++)
+							{
+								if(btAddressData[i].equals(remoteDevice.getAddress()))
+								{
+									bCheck = false;
+									break;
+								}
+							}
+
+							if(bCheck) {
+								btAddressData[btCounter] = remoteDevice.getAddress();
+								btCounter++;
+							}
+
 //    					Log.e("onReceive", key);
 //    					Log.e("onReceive", mBluetoothAdapter.ACTION_DISCOVERY_FINISHED);
 //    					Log.e("onReceive", "Status=" + mBluetoothAdapter.getState());
+						}
 					}
 				} 
 			}; 
@@ -884,7 +927,8 @@ public class CitizenEscpPrinter extends CordovaPlugin {
 			cid.sendPluginResult( new PluginResult(PluginResult.Status.ERROR, msg)); 
 		} else {
 			try {
-				Thread.sleep(5000);
+				Thread.sleep(7000);
+				removeBluetoothListener();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
